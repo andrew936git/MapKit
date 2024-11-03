@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">MapKit</string>
+    <string name="textTVText">Определение местоположения</string>
+</resources>
