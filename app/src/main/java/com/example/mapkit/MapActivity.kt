@@ -2,20 +2,29 @@ package com.example.mapkit
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.example.mapkit.databinding.ActivityMapBinding
 import com.yandex.mapkit.MapKitFactory
 import com.yandex.mapkit.geometry.Point
 import com.yandex.mapkit.map.CameraPosition
+import com.yandex.mapkit.map.MapObjectCollection
+import com.yandex.mapkit.map.PlacemarkMapObject
+import com.yandex.runtime.image.ImageProvider
 
 class MapActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMapBinding
     private lateinit var locationManager: LocationManager
+    private lateinit var mapObjectCollection: MapObjectCollection
+    private lateinit var placeMarkMapObject: PlacemarkMapObject
+    private lateinit var startLocation: Point
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,7 +36,36 @@ class MapActivity : AppCompatActivity() {
         locationManager = getSystemService(LOCATION_SERVICE) as LocationManager
         requestLocation()
 
+        binding.trafficBT.setOnClickListener{
 
+            val trafficLayer =
+                MapKitFactory.getInstance().createTrafficLayer(binding.mapView.mapWindow)
+            trafficLayer.isTrafficVisible = !trafficLayer.isTrafficVisible
+
+        }
+
+    }
+    private fun createBitmapFromVector(art: Int): Bitmap? {
+        val drawable = ContextCompat.getDrawable(this, art) ?: return null
+        val bitmap = Bitmap.createBitmap(
+            drawable.intrinsicWidth,
+            drawable.intrinsicHeight,
+            Bitmap.Config.ARGB_8888
+        ) ?: return null
+        val canvas = Canvas(bitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+        return bitmap
+    }
+
+    private fun setMarkInStartLocation(){
+        val marker = createBitmapFromVector(R.drawable.ic_place)
+        mapObjectCollection = binding.mapView.map.mapObjects
+        placeMarkMapObject = mapObjectCollection.addPlacemark(
+            startLocation,
+            ImageProvider.fromBitmap(marker)
+        )
+        placeMarkMapObject.opacity = 0.5f
     }
 
     private fun requestLocation() {
@@ -50,15 +88,17 @@ class MapActivity : AppCompatActivity() {
         override fun onLocationChanged(location: Location) {
             val latitude = location.latitude
             val longitude = location.longitude
-            setMapPosition(latitude, longitude)
+            startLocation = Point(latitude, longitude)
+            setMapPosition(startLocation)
+            setMarkInStartLocation()
             locationManager.removeUpdates(this)
         }
 
     }
 
-    private fun setMapPosition(latitude: Double, longitude: Double) {
-        binding.mapView.map.move(CameraPosition(Point(latitude, longitude), 15f, 0f, 0f))
-        binding.mapView.map.mapObjects.addPlacemark(Point(latitude, longitude))
+    private fun setMapPosition(location: Point) {
+        binding.mapView.map.move(CameraPosition(Point(location.latitude, location.longitude), 15f, 0f, 0f))
+        binding.mapView.map.mapObjects.addPlacemark(Point(location.latitude, location.longitude))
     }
 
 
